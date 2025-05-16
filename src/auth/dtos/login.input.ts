@@ -1,15 +1,10 @@
-import { ArgsType, Field } from '@nestjs/graphql';
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { Field, InputType } from '@nestjs/graphql'; // ArgsType 대신 InputType 임포트
 
-@ArgsType()
-export class LoginArgs {
-  @Field()
-  @IsNotEmpty()
-  @IsEmail()
+@InputType() // @ArgsType() 대신 @InputType() 사용
+export class LoginInput {
+  @Field(() => String)
   email: string;
 
-  @Field()
-  @IsNotEmpty()
-  @MinLength(6)
+  @Field(() => String)
   password: string;
 }
