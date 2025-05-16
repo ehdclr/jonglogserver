@@ -1,0 +1,119 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  avatarUrl String?  @map("avatar_url")
+  bio       String?
+  role      String   @default("admin")
+  posts     Post[]
+  files     File[]
+  schedules Schedule[]
+  activities Activity[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  posts       Post[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
+
+model Post {
+  id          String      @id @default(uuid())
+  title       String
+  slug        String      @unique
+  content     String?
+  excerpt     String?
+  authorId    String      @map("author_id")
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  categoryId  String?     @map("category_id")
+  category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  isPublic    Boolean     @default(false) @map("is_public")
+  isDraft     Boolean     @default(true) @map("is_draft")
+  viewCount   Int         @default(0) @map("view_count")
+  postFiles   PostFile[]
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  publishedAt DateTime?   @map("published_at")
+
+  @@map("posts")
+}
+
+model File {
+  id          String      @id @default(uuid())
+  name        String
+  size        Int
+  type        String
+  url         String
+  storagePath String      @map("storage_path")
+  ownerId     String      @map("owner_id")
+  owner       User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  isPublic    Boolean     @default(false) @map("is_public")
+  isFavorite  Boolean     @default(false) @map("is_favorite")
+  fileType    String      @map("file_type")
+  postFiles   PostFile[]
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@map("files")
+}
+
+model PostFile {
+  id         String   @id @default(uuid())
+  postId     String   @map("post_id")
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  fileId     String   @map("file_id")
+  file       File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  usageType  String   @map("usage_type")
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("post_files")
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  content     String?
+  referenceId String?  @map("reference_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("activities")
+}
+
+model Schedule {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startDate   DateTime @map("start_date")
+  endDate     DateTime? @map("end_date")
+  allDay      Boolean  @default(false) @map("all_day")
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("schedules")
+}

@@ -1,0 +1,54 @@
+type Post {
+  id: ID!
+  title: String!
+  slug: String!
+  content: String
+  excerpt: String
+  author: User!
+  category: Category
+  isPublic: Boolean!
+  isDraft: Boolean!
+  viewCount: Int!
+  createdAt: String!
+  updatedAt: String!
+  publishedAt: String
+  images: [PostImage!]!
+  attachments: [PostAttachment!]!
+}
+
+input CreatePostInput {
+  title: String!
+  slug: String!
+  content: String
+  excerpt: String
+  categoryId: ID
+  isPublic: Boolean
+  isDraft: Boolean
+  images: [ID!]! # 이미지 파일 ID 배열
+  attachments: [ID!]! # 첨부 파일 ID 배열
+}
+
+input UpdatePostInput {
+  title: String
+  slug: String
+  content: String
+  excerpt: String
+  categoryId: ID
+  isPublic: Boolean
+  isDraft: Boolean
+  images: [ID!]!
+  attachments: [ID!]!
+}
+
+type Query {
+  posts(page: Int, limit: Int): [Post!]!
+  post(id: ID!): Post
+  postsByCategory(categoryId: ID!, page: Int, limit: Int): [Post!]!
+  postsByAuthor(authorId: ID!, page: Int, limit: Int): [Post!]!
+}
+
+type Mutation {
+  createPost(input: CreatePostInput!): Post!
+  updatePost(id: ID!, input: UpdatePostInput!): Post!
+  deletePost(id: ID!): Boolean!
+}
