@@ -3,6 +3,8 @@ import { AuthService } from './auth.service';
 import { LoginInput } from './dtos/login.input';
 import { AuthPayload } from './dtos/auth.response';
 import { SupabaseService } from '../databases/supabase.service';
+import { UseGuards } from '@nestjs/common';
+import { AuthGuard } from './guards/auth.guard';
 @Resolver()
 export class AuthResolver {
   constructor(
@@ -16,8 +18,14 @@ export class AuthResolver {
   }
 
   @Query(() => AuthPayload)
-  async getCurrentUser(@Args('accessToken') accessToken: string) {
-    return this.authService.getCurrentUser(accessToken);
+  @UseGuards(AuthGuard)
+  async getCurrentUser(@Context() context) {
+    const user = this.authService.getCurrentUser(context.req.user);
+    return {
+      user,
+      success: true,
+      message: '현재 접속 중인 사용자 정보',
+    };
   }
 
   @Mutation(() => AuthPayload)
@@ -25,9 +33,8 @@ export class AuthResolver {
     @Args('loginInput', { type: () => LoginInput }) loginInput: LoginInput,
     @Context() context,
   ) {
-    const { user, accessToken, refreshToken } = await this.authService.login(
-      loginInput,
-    );
+    const { user, accessToken, refreshToken } =
+      await this.authService.login(loginInput);
 
     if (context.res) {
       context.res.cookie('refreshToken', refreshToken, {
@@ -46,7 +53,29 @@ export class AuthResolver {
   }
 
   @Mutation(() => AuthPayload)
-  async refreshToken(@Args('refreshToken') refreshToken: string) {
-    return this.authService.refreshToken(refreshToken);
+  async refreshToken(
+    @Args('refreshToken') refreshToken: string,
+    @Context() context,
+  ) {
+    const {
+      user,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    } = await this.authService.refreshToken(refreshToken);
+
+    if (context.res) {
+      context.res.cookie('refreshToken', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7일
+      });
+    }
+
+    return {
+      user,
+      accessToken: newAccessToken,
+      success: true,
+      message: '토큰 갱신 성공',
+    };
   }
 }

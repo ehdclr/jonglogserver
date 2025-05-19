@@ -51,9 +51,10 @@ export class AuthService {
     }
   }
 
-  async getCurrentUser(accessToken: string) {
-    const payload = this.jwtService.verify(accessToken);
-    const user = await this.usersService.findOne(payload.id);
+  async getCurrentUser(userPayload: any) {
+    // 데이터베이스에서 최신 사용자 정보 조회
+    console.log(userPayload);
+    const user = await this.usersService.findOne(userPayload.id);
     return user;
   }
 
@@ -67,18 +68,18 @@ export class AuthService {
       role: user.role,
     };
 
-    const accessToken = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: '3h',
+    });
     const refreshToken = this.jwtService.sign(payload, {
       expiresIn: '7d',
     });
 
     await this.redisService.set(
-      `refresh_token:${refreshToken}`,
+      `refresh_token:${user.id}`,
       refreshToken,
       60 * 60 * 24 * 7, // 7일
     );
-
-    console.log(user);
 
     return {
       user,
@@ -104,12 +105,14 @@ export class AuthService {
       }
 
       const newPayload = {
-        sub: user.id,
+        id: user.id,
         email: user.email,
         role: user.role,
       };
 
-      const newAccessToken = this.jwtService.sign(newPayload);
+      const newAccessToken = this.jwtService.sign(newPayload, {
+        expiresIn: '3h',
+      });
       const newRefreshToken = this.jwtService.sign(newPayload, {
         expiresIn: '7d',
       });
