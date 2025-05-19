@@ -1,75 +1,135 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { SupabaseService } from '../databases/supabase.service';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-
-interface AuthPayload {
-  sub: string;
-  email: string;
-  role: string;
-}
+import type { JwtService } from '@nestjs/jwt';
+import type { ConfigService } from '@nestjs/config';
+import type { UserService } from '../users/user.service';
+import type { LoginInput } from './dtos/login.input';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { RedisService } from '../databases/redis.service';
 
 @Injectable()
 export class AuthService {
-  private readonly jwtSecret: string;
+  private supabase: SupabaseClient;
 
   constructor(
-    private readonly supabaseService: SupabaseService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    private jwtService: JwtService,
+    private usersService: UserService,
+    private configService: ConfigService,
+    private redisService: RedisService,
   ) {
-    this.jwtSecret =
-      this.configService.get<string>('JWT_SECRET') || 'your-secret-key';
+    // Supabase 클라이언트 초기화
+    this.supabase = createClient(
+      this.configService.get<string>('SUPABASE_URL') ?? '',
+      this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
   }
 
-  async login(
-    email: string,
-    password: string,
-  ): Promise<{ accessToken: string }> {
-    const { data, error } = await this.supabaseService
-      .getClient()
-      .auth.signInWithPassword({
+  async validateUser(email: string, password: string) {
+    try {
+      // Supabase 인증으로 사용자 로그인
+      const { data, error } = await this.supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-    if (error || !data?.session?.access_token || !data?.user?.id) {
-      throw new UnauthorizedException('Invalid credentials');
+      if (error) {
+        throw new UnauthorizedException(
+          '이메일 또는 비밀번호가 올바르지 않습니다.',
+        );
+      }
+
+      const user = await this.usersService.findOneByEmail(email);
+      if (!user) {
+        throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+      }
+
+      return user;
+    } catch (error: unknown) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('인증에 실패했습니다.');
     }
-
-    const { data: user, error: userError } = await this.supabaseService
-      .getClient()
-      .from('users')
-      .select('id, email, role')
-      .eq('id', data.user.id)
-      .single();
-
-    if (userError || !user || !['owner', 'admin'].includes(user.role)) {
-      throw new UnauthorizedException('Invalid user');
-    }
-
-    const payload: AuthPayload = {
-      sub: user.id,
-      email: user.email as string,
-      role: user.role as string,
-    };
-    const accessToken = this.jwtService.sign(payload);
-
-    return { accessToken };
   }
 
-  async verifyAdmin(userId: string): Promise<boolean> {
-    const { data: user, error } = await this.supabaseService
-      .getClient()
-      .from('users')
-      .select('role')
-      .eq('id', userId)
-      .single();
+  async getCurrentUser(accessToken: string) {
+    const payload = this.jwtService.verify(accessToken);
+    const user = await this.usersService.findOne(payload.id);
+    return user;
+  }
 
-    if (error || !user) {
-      return false;
+  async login(loginInput: LoginInput) {
+    const { email, password } = loginInput;
+    const user = await this.validateUser(email, password);
+
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: '7d',
+    });
+
+    await this.redisService.set(
+      `refresh_token:${refreshToken}`,
+      refreshToken,
+      60 * 60 * 24 * 7, // 7일
+    );
+
+    console.log(user);
+
+    return {
+      user,
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  async refreshToken(refreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshToken);
+      const storedToken = await this.redisService.get(
+        `refresh_token:${payload.id}`,
+      );
+
+      if (!storedToken || storedToken !== refreshToken) {
+        throw new UnauthorizedException('유효하지 않은 토큰입니다.');
+      }
+
+      const user = await this.usersService.findOne(payload.id);
+      if (!user) {
+        throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+      }
+
+      const newPayload = {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+      };
+
+      const newAccessToken = this.jwtService.sign(newPayload);
+      const newRefreshToken = this.jwtService.sign(newPayload, {
+        expiresIn: '7d',
+      });
+
+      await this.redisService.set(
+        `refresh_token:${user.id}`,
+        newRefreshToken,
+        60 * 60 * 24 * 7, // 7일
+      );
+
+      return {
+        user,
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      };
+    } catch (error: unknown) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('토큰 갱신에 실패했습니다.');
     }
-
-    return ['owner', 'admin'].includes(user.role as string);
   }
 }

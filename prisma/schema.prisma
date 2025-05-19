@@ -9,6 +9,11 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum UserRole {
+  ADMIN
+  OWNER
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique

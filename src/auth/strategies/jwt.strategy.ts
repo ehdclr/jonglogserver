@@ -1,38 +1,33 @@
-// src/auth/strategies/jwt.strategy.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { SupabaseService } from '../../databases/supabase.service';
-import { AuthUser } from '../entities/auth.entity';
-
-interface JwtPayload {
-  sub: string;
-  email: string;
-  role: string;
-  iat: number;
-  exp: number;
-}
+import { Request } from 'express';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly supabaseService: SupabaseService,
-  ) {
+  constructor(configService: ConfigService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: Request) => {
+          let token = null;
+          if (request && request.cookies) {
+            token = request.cookies['access_token'];
+          }
+          return token;
+        },
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
-      secretOrKey:
-        configService.get<string>('JWT_SECRET') || 'fallback-secret-key',
+      secretOrKey: configService.get('JWT_SECRET'),
     });
   }
 
-  async validate(payload: JwtPayload): Promise<AuthUser> {
-    const isAdmin = await this.supabaseService.verifyAdmin(payload.sub);
-    if (!isAdmin) {
-      throw new UnauthorizedException('Not an admin');
-    }
-    return { sub: payload.sub, email: payload.email, role: payload.role };
+  validate(payload: any) {
+    return {
+      id: payload.sub,
+      email: payload.email,
+      name: payload.name,
+    };
   }
 }
