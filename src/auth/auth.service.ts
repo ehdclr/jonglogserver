@@ -88,9 +88,19 @@ export class AuthService {
     };
   }
 
+  async logout(userPayload: any) {
+    await this.redisService.del(`refresh_token:${userPayload.id}`);
+
+    return {
+      success: true,
+      message: '로그아웃 성공',
+    };
+  }
+
   async refreshToken(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken);
+
       const storedToken = await this.redisService.get(
         `refresh_token:${payload.id}`,
       );

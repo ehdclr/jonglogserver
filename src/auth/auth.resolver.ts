@@ -53,6 +53,20 @@ export class AuthResolver {
   }
 
   @Mutation(() => AuthPayload)
+  @UseGuards(AuthGuard)
+  async logout(@Context() context) {
+    await this.authService.logout(context.req.user);
+
+    if (context.res) {
+      context.res.clearCookie('refreshToken');
+    }
+    return {
+      success: true,
+      message: '로그아웃 성공',
+    };
+  }
+
+  @Mutation(() => AuthPayload)
   async refreshToken(
     @Args('refreshToken') refreshToken: string,
     @Context() context,
