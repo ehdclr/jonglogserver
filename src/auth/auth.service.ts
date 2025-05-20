@@ -53,7 +53,6 @@ export class AuthService {
 
   async getCurrentUser(userPayload: any) {
     // 데이터베이스에서 최신 사용자 정보 조회
-    console.log(userPayload);
     const user = await this.usersService.findOne(userPayload.id);
     return user;
   }

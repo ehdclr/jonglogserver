@@ -4,16 +4,30 @@ import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
 @InputType()
 export class CreateUserInput {
   @Field()
-  @IsNotEmpty()
   @IsEmail()
   email: string;
 
   @Field()
-  @IsNotEmpty()
   @MinLength(6)
   password: string;
 
   @Field()
+  name?: string;
+
+  @Field()
+  role: string;
+
+  @Field()
+  avatar_url?: string;
+
+  @Field()
+  bio?: string;
+
+  @Field()
   @IsNotEmpty()
-  name: string;
+  createdAt: Date;
+
+  @Field()
+  @IsNotEmpty()
+  updatedAt: Date;
 }

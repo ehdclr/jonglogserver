@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import { LoginInput } from './dtos/login.input';
 import { AuthPayload } from './dtos/auth.response';
 import { SupabaseService } from '../databases/supabase.service';
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from './guards/auth.guard';
 @Resolver()
 export class AuthResolver {
@@ -19,7 +19,7 @@ export class AuthResolver {
 
   @Query(() => AuthPayload)
   @UseGuards(AuthGuard)
-  async getCurrentUser(@Context() context) {
+  getCurrentUser(@Context() context) {
     const user = this.authService.getCurrentUser(context.req.user);
     return {
       user,
@@ -67,10 +67,18 @@ export class AuthResolver {
   }
 
   @Mutation(() => AuthPayload)
-  async refreshToken(
-    @Args('refreshToken') refreshToken: string,
-    @Context() context,
-  ) {
+  async refreshToken(@Context() context) {
+    const refreshToken =
+      context.req.cookies?.refreshToken ||
+      context.req.headers['cookie']
+        ?.split('; ')
+        .find((c) => c.startsWith('refreshToken='))
+        ?.split('=')[1];
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
+
     const {
       user,
       accessToken: newAccessToken,

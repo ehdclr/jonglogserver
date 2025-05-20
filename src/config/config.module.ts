@@ -22,6 +22,16 @@ const envSchema = z.object({
   REDIS_PORT: z.string().default('6379'),
   REDIS_PASSWORD: z.string(),
   REDIS_DB: z.string().default('0'),
+
+  //client
+  CLIENT_URL: z.string(),
+
+  //email
+  EMAIL_HOST: z.string(),
+  EMAIL_PORT: z.string(),
+  EMAIL_USER: z.string(),
+  EMAIL_PASSWORD: z.string(),
+  EMAIL_FROM: z.string(),
 });
 
 @Global()
