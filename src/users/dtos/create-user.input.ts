@@ -14,20 +14,12 @@ export class CreateUserInput {
   @Field()
   name?: string;
 
-  @Field()
-  role: string;
+  @Field({ defaultValue: 'admin' })
+  role: string; //기본값 admin
 
   @Field()
   avatar_url?: string;
 
   @Field()
   bio?: string;
-
-  @Field()
-  @IsNotEmpty()
-  createdAt: Date;
-
-  @Field()
-  @IsNotEmpty()
-  updatedAt: Date;
 }

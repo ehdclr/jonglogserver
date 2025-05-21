@@ -1,6 +1,6 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 import { SignUpRequest } from '../entities/user.entity';
-
+import { User } from '../entities/user.entity';
 @ObjectType()
 export class RequestSignUpResponse {
   @Field(() => String, { nullable: true })
@@ -50,4 +50,14 @@ export class CheckSignUpRequestResponse {
 
   @Field(() => SignUpRequest, { nullable: true })
   signUpRequest?: SignUpRequest;
+}
+
+@ObjectType()
+export class CreateUserResponse {
+  @Field(() => Boolean)
+  success: boolean;
+
+  @Field(() => String)
+  message: string;
+
 }

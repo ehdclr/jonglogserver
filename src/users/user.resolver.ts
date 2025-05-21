@@ -13,6 +13,7 @@ import {
   SignUpRequestListResponse,
   ProcessSignUpRequestResponse,
   CheckSignUpRequestResponse,
+  CreateUserResponse,
 } from './dtos/users.response';
 @Resolver(() => User)
 export class UserResolver {
@@ -101,7 +102,6 @@ export class UserResolver {
     @Args('requestId') requestId: string,
   ): Promise<CheckSignUpRequestResponse> {
     try {
-      console.log('requestId', requestId);
       const result = await this.userService.checkSignUpRequest(requestId);
       return {
         success: true,
@@ -118,13 +118,15 @@ export class UserResolver {
   }
 
   //TODO 사용자 생성
-  @Mutation(() => User)
+  @Mutation(() => CreateUserResponse)
   async createUser(
-    @Args('user') user: CreateUserInput,
+    @Args('createUserInput') createUserInput: CreateUserInput,
     @Args('signupRequestId') signupRequestId: string,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<CreateUserResponse> {
     try {
-      await this.userService.create(user, signupRequestId);
+      console.log('user', createUserInput);
+      console.log('signupRequestId', signupRequestId);
+      await this.userService.create(createUserInput, signupRequestId);
       return {
         success: true,
         message: '사용자가 생성되었습니다.',
