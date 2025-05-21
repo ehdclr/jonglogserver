@@ -8,49 +8,34 @@ import { PassportModule } from '@nestjs/passport';
 import { DatabaseModule } from '../databases/database.module';
 import { UserModule } from '../users/user.module';
 import { RedisService } from '../databases/redis.service';
-import { JwtService } from '@nestjs/jwt';
-import { UserService } from '../users/user.service';
-
+import { AuthGuard } from './guards/auth.guard'; // 반드시 import
+import { forwardRef } from '@nestjs/common';
 @Module({
   imports: [
     DatabaseModule,
     ConfigModule,
     PassportModule,
-    UserModule,
+    forwardRef(() => UserModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: '7d',
-        },
+        signOptions: { expiresIn: '7d' },
       }),
     }),
   ],
   providers: [
-    {
-      provide: AuthService,
-      useFactory: (
-        jwtService: JwtService,
-        usersService: UserService,
-        configService: ConfigService,
-        redisService: RedisService,
-      ) => {
-        return new AuthService(
-          jwtService,
-          usersService,
-          configService,
-          redisService,
-        );
-      },
-      inject: [JwtService, UserService, ConfigService, RedisService],
-    },
+    AuthService,
     AuthResolver,
     JwtStrategy,
     RedisService,
-    ConfigService,
+    AuthGuard, // 반드시 providers에 등록
   ],
-  exports: [AuthService],
+  exports: [
+    AuthService,
+    JwtModule,
+    AuthGuard, // 반드시 providers에 등록된 것만 exports 가능
+  ],
 })
 export class AuthModule {}

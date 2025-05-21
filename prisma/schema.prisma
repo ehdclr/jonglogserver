@@ -135,6 +135,7 @@ model SignUpRequest {
   email       String   @unique
   name        String
   status      String   @default("pending")   // 'pending' | 'accepted' | 'rejected'
+  expiresAt   DateTime @default(dbgenerated("(now() + interval '1 day')"))
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

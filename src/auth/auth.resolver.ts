@@ -20,12 +20,22 @@ export class AuthResolver {
   @Query(() => AuthPayload)
   @UseGuards(AuthGuard)
   getCurrentUser(@Context() context) {
-    const user = this.authService.getCurrentUser(context.req.user);
-    return {
-      user,
-      success: true,
-      message: '현재 접속 중인 사용자 정보',
-    };
+    try {
+      const user = this.authService.getCurrentUser(context.req.user);
+      return {
+        user,
+        success: true,
+        message: '현재 접속 중인 사용자 정보',
+      };
+    } catch (error) {
+      console.log('error', error);
+      return {
+        user: null,
+        accessToken: null,
+        success: false,
+        message: error.message,
+      };
+    }
   }
 
   @Mutation(() => AuthPayload)
@@ -33,71 +43,97 @@ export class AuthResolver {
     @Args('loginInput', { type: () => LoginInput }) loginInput: LoginInput,
     @Context() context,
   ) {
-    const { user, accessToken, refreshToken } =
-      await this.authService.login(loginInput);
+    try {
+      const { user, accessToken, refreshToken } =
+        await this.authService.login(loginInput);
 
-    if (context.res) {
-      context.res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7일
-      });
+      if (context.res) {
+        context.res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7일
+        });
+      }
+      return {
+        user,
+        accessToken,
+        success: true,
+        message: '로그인 성공',
+      };
+    } catch (error) {
+      console.log('error', error);
+      return {
+        user: null,
+        accessToken: null,
+        success: false,
+        message: error.message,
+      };
     }
-
-    return {
-      user,
-      accessToken,
-      success: true,
-      message: '로그인 성공',
-    };
   }
 
   @Mutation(() => AuthPayload)
   @UseGuards(AuthGuard)
   async logout(@Context() context) {
-    await this.authService.logout(context.req.user);
+    try {
+      await this.authService.logout(context.req.user);
 
-    if (context.res) {
-      context.res.clearCookie('refreshToken');
+      if (context.res) {
+        context.res.clearCookie('refreshToken');
+      }
+      return {
+        success: true,
+        message: '로그아웃 성공',
+      };
+    } catch (error) {
+      console.log('error', error);
+      return {
+        success: false,
+        message: error.message,
+      };
     }
-    return {
-      success: true,
-      message: '로그아웃 성공',
-    };
   }
-
   @Mutation(() => AuthPayload)
   async refreshToken(@Context() context) {
-    const refreshToken =
-      context.req.cookies?.refreshToken ||
-      context.req.headers['cookie']
-        ?.split('; ')
-        .find((c) => c.startsWith('refreshToken='))
-        ?.split('=')[1];
+    try {
+      const refreshToken =
+        context.req.cookies?.refreshToken ||
+        context.req.headers['cookie']
+          ?.split('; ')
+          .find((c) => c.startsWith('refreshToken='))
+          ?.split('=')[1];
 
-    if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token not found');
+      if (!refreshToken) {
+        throw new UnauthorizedException('Refresh token not found');
+      }
+
+      const {
+        user,
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      } = await this.authService.refreshToken(refreshToken);
+
+      if (context.res) {
+        context.res.cookie('refreshToken', newRefreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7일
+        });
+      }
+
+      return {
+        user,
+        accessToken: newAccessToken,
+        success: true,
+        message: '토큰 갱신 성공',
+      };
+    } catch (error) {
+      console.log('error', error);
+      return {
+        user: null,
+        accessToken: null,
+        success: false,
+        message: error.message,
+      };
     }
-
-    const {
-      user,
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-    } = await this.authService.refreshToken(refreshToken);
-
-    if (context.res) {
-      context.res.cookie('refreshToken', newRefreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7일
-      });
-    }
-
-    return {
-      user,
-      accessToken: newAccessToken,
-      success: true,
-      message: '토큰 갱신 성공',
-    };
   }
 }

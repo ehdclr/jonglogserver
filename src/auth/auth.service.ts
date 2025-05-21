@@ -1,11 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import type { JwtService } from '@nestjs/jwt';
-import type { ConfigService } from '@nestjs/config';
-import type { UserService } from '../users/user.service';
-import type { LoginInput } from './dtos/login.input';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { UserService } from '../users/user.service';
+import { LoginInput } from './dtos/login.input';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { RedisService } from '../databases/redis.service';
-
+import { AuthUser } from './entities/auth.entity';
 @Injectable()
 export class AuthService {
   private supabase: SupabaseClient;
@@ -23,32 +23,23 @@ export class AuthService {
     );
   }
 
-  async validateUser(email: string, password: string) {
-    try {
-      // Supabase 인증으로 사용자 로그인
-      const { data, error } = await this.supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        throw new UnauthorizedException(
-          '이메일 또는 비밀번호가 올바르지 않습니다.',
-        );
-      }
-
-      const user = await this.usersService.findOneByEmail(email);
-      if (!user) {
-        throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
-      }
-
-      return user;
-    } catch (error: unknown) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new UnauthorizedException('인증에 실패했습니다.');
+  async validateUser(email: string, password: string): Promise<AuthUser> {
+    const user = await this.usersService.findOneByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
     }
+    // Supabase 인증으로 사용자 로그인
+    const { data, error } = await this.supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new UnauthorizedException(
+        '이메일 또는 비밀번호가 올바르지 않습니다.',
+      );
+    }
+    return user;
   }
 
   async getCurrentUser(userPayload: any) {
@@ -60,7 +51,6 @@ export class AuthService {
   async login(loginInput: LoginInput) {
     const { email, password } = loginInput;
     const user = await this.validateUser(email, password);
-
     const payload = {
       id: user.id,
       email: user.email,
@@ -97,51 +87,44 @@ export class AuthService {
   }
 
   async refreshToken(refreshToken: string) {
-    try {
-      const payload = this.jwtService.verify(refreshToken);
+    const payload = this.jwtService.verify(refreshToken);
 
-      const storedToken = await this.redisService.get(
-        `refresh_token:${payload.id}`,
-      );
+    const storedToken = await this.redisService.get(
+      `refresh_token:${payload.id}`,
+    );
 
-      if (!storedToken || storedToken !== refreshToken) {
-        throw new UnauthorizedException('유효하지 않은 토큰입니다.');
-      }
-
-      const user = await this.usersService.findOne(payload.id);
-      if (!user) {
-        throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
-      }
-
-      const newPayload = {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      };
-
-      const newAccessToken = this.jwtService.sign(newPayload, {
-        expiresIn: '3h',
-      });
-      const newRefreshToken = this.jwtService.sign(newPayload, {
-        expiresIn: '7d',
-      });
-
-      await this.redisService.set(
-        `refresh_token:${user.id}`,
-        newRefreshToken,
-        60 * 60 * 24 * 7, // 7일
-      );
-
-      return {
-        user,
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      };
-    } catch (error: unknown) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new UnauthorizedException('토큰 갱신에 실패했습니다.');
+    if (!storedToken || storedToken !== refreshToken) {
+      throw new UnauthorizedException('유효하지 않은 토큰입니다.');
     }
+
+    const user = await this.usersService.findOne(payload.id);
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+
+    const newPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const newAccessToken = this.jwtService.sign(newPayload, {
+      expiresIn: '3h',
+    });
+    const newRefreshToken = this.jwtService.sign(newPayload, {
+      expiresIn: '7d',
+    });
+
+    await this.redisService.set(
+      `refresh_token:${user.id}`,
+      newRefreshToken,
+      60 * 60 * 24 * 7, // 7일
+    );
+
+    return {
+      user,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    };
   }
 }

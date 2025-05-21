@@ -26,3 +26,27 @@ export class User {
   @Field()
   updatedAt: Date;
 }
+
+@ObjectType()
+export class SignUpRequest {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  email: string;
+
+  @Field()
+  name: string;
+
+  @Field()
+  status: string;
+
+  @Field()
+  expiresAt: Date;
+
+  @Field()
+  createdAt: Date;
+
+  @Field()
+  updatedAt: Date;
+}
