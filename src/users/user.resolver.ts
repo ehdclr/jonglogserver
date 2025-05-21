@@ -11,6 +11,7 @@ import {
 import {
   RequestSignUpResponse,
   SignUpRequestListResponse,
+  ProcessSignUpRequestResponse,
 } from './dtos/users.response';
 @Resolver(() => User)
 export class UserResolver {
@@ -49,16 +50,16 @@ export class UserResolver {
     }
   }
 
-  @Mutation(() => User)
+  @Mutation(() => ProcessSignUpRequestResponse)
   @UseGuards(AuthGuard)
   async processSignUpRequest(
     @Args('requestId') requestId: string,
     @Args('status') status: string,
     @Context() context,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<ProcessSignUpRequestResponse> {
     try {
       await this.userService.processSignUpRequest(
-        context.user,
+        context.req.user,
         requestId,
         status,
       );
@@ -78,7 +79,6 @@ export class UserResolver {
   @Query(() => SignUpRequestListResponse)
   @UseGuards(AuthGuard)
   async signUpRequests(@Context() context): Promise<SignUpRequestListResponse> {
-    console.log('context', context);
     try {
       const result = await this.userService.getSignUpRequests(context.req.user);
       return {

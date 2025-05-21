@@ -30,3 +30,12 @@ export class SignUpRequestListResponse {
   @Field(() => String)
   message: string;
 }
+
+@ObjectType()
+export class ProcessSignUpRequestResponse {
+  @Field(() => Boolean)
+  success: boolean;
+
+  @Field(() => String)
+  message: string;
+}

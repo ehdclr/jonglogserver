@@ -109,7 +109,11 @@ export class UserService {
     }
 
     const existingRequest = await this.prisma.signUpRequest.findFirst({
-      where: { email },
+      where: {
+        email,
+        status: { in: ['pending', 'accepted'] },
+        expiresAt: { gt: new Date() },
+      },
       orderBy: { createdAt: 'desc' },
     });
     // 만료되지 않은 경우에만 상태 체크
@@ -130,30 +134,9 @@ export class UserService {
           return {
             data: {
               status: 'accepted',
-              message: '가입 요청이 승인되었습니다. 회원가입을 완료해주세요.',
+              message: `가입 요청이 승인되었습니다. 회원가입을 완료해주세요. 
+                  ${process.env.CLIENT_URL}/auth/complete-signup?signupRequestId=${existingRequest.id}에서 완료해주세요.`,
               canResend: false,
-              expiresAt: existingRequest.expiresAt,
-            },
-            success: true,
-            message: '가입 요청이 전송되었습니다.',
-          };
-        case 'rejected':
-          return {
-            data: {
-              status: 'rejected',
-              message: '가입 요청이 거절되었습니다.',
-              canResend: true,
-              expiresAt: existingRequest.expiresAt,
-            },
-            success: true,
-            message: '가입 요청이 전송되었습니다.',
-          };
-        default:
-          return {
-            data: {
-              status: existingRequest.status,
-              message: '만료된 가입 요청입니다. 다시 요청해주세요.',
-              canResend: true,
               expiresAt: existingRequest.expiresAt,
             },
             success: true,
@@ -237,7 +220,11 @@ export class UserService {
     requestId: string,
     status: string,
   ): Promise<void> {
-    if (currentUser.role !== 'owner') {
+    const user = await this.prisma.user.findUnique({
+      where: { id: currentUser.id },
+    });
+
+    if (user?.role !== 'owner') {
       throw new BadRequestException('소유자만 가입요청을 처리할 수 있습니다.');
     }
 
@@ -270,12 +257,61 @@ export class UserService {
         to: signUpRequest.email,
         subject: '[블로그] 회원가입 승인',
         html: `
-        <div>
-          <h1>회원가입 승인</h1>
-          <p>회원가입 요청이 승인되었습니다.</p>
-          <p>회원가입이 승인되었습니다!</p>
-          <p><a href="${process.env.CLIENT_URL}/auth/complete-signup?signupRequestId=${requestId}">여기</a>를 클릭해 추가 정보를 입력해 가입을 완료하세요.</p>
-        </div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin-top: 20px; margin-bottom: 20px; overflow: hidden;">
+    <div style="background-color: #3b82f6; padding: 30px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">블로그 가입 승인</h1>
+    </div>
+    
+    <div style="padding: 30px; color: #333333;">
+      <h2 style="margin-top: 0; margin-bottom: 20px; color: #1e3a8a; font-size: 20px;">가입 요청이 승인되었습니다!</h2>
+      
+      <p style="margin-bottom: 15px; line-height: 1.6; font-size: 16px;">안녕하세요, 블로그 가입 요청이 <strong>승인</strong>되었습니다.</p>
+      
+      <p style="margin-bottom: 15px; line-height: 1.6; font-size: 16px;">저희 블로그 커뮤니티의 일원이 되신 것을 진심으로 환영합니다. 이제 아래 버튼을 클릭하여 추가 정보를 입력하고 가입 절차를 완료해 주세요.</p>
+      
+      <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 25px 0; border-radius: 4px;">
+        <p style="margin: 0; color: #1e40af; font-size: 15px;">
+          <strong>중요:</strong> 가입 완료 링크는 보안을 위해 24시간 동안만 유효합니다.
+        </p>
+      </div>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${process.env.CLIENT_URL}/auth/complete-signup?signupRequestId=${requestId}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; text-decoration: none; padding: 12px 25px; border-radius: 4px; font-weight: 600; font-size: 16px;">가입 완료하기</a>
+      </div>
+      
+      <p style="margin-top: 25px; margin-bottom: 15px; line-height: 1.6; font-size: 16px;">버튼이 작동하지 않는 경우, 아래 링크를 복사하여 브라우저에 붙여넣기 해주세요:</p>
+      
+      <div style="background-color: #f8fafc; padding: 12px; border-radius: 4px; word-break: break-all; font-size: 14px; color: #64748b; margin-bottom: 20px;">
+        ${process.env.CLIENT_URL}/auth/complete-signup?signupRequestId=${requestId}
+      </div>
+      
+      <p style="margin-bottom: 15px; line-height: 1.6; font-size: 16px;">블로그에서 할 수 있는 일:</p>
+      <ul style="color: #333333; line-height: 1.6; font-size: 16px; margin-bottom: 20px;">
+        <li>다양한 주제의 글 작성 및 공유</li>
+        <li>다른 회원들과 소통 및 네트워킹</li>
+        <li>관심 있는 콘텐츠 구독</li>
+        <li>개인 프로필 관리</li>
+      </ul>
+    </div>
+    
+    <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+      <p style="margin: 0 0 10px; color: #64748b; font-size: 14px;">
+        © 이현종 블로그. All rights reserved.
+      </p>
+      <p style="margin: 0; color: #64748b; font-size: 14px;">
+        이 이메일은 회원님의 가입 요청에 따라 발송되었습니다.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
         `,
       });
 
@@ -294,10 +330,56 @@ export class UserService {
         to: signUpRequest.email,
         subject: '[블로그] 회원가입 거절',
         html: `
-          <div>
-            <h1>회원가입 거절</h1>
-            <p>죄송합니다. 회원가입 요청이 거절되었습니다.</p>
-          </div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin-top: 20px; margin-bottom: 20px; overflow: hidden;">
+    <div style="background-color: #3b82f6; padding: 30px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">블로그 가입 결과 안내</h1>
+    </div>
+    
+    <div style="padding: 30px; color: #333333;">
+      <h2 style="margin-top: 0; margin-bottom: 20px; color: #1e3a8a; font-size: 20px;">가입 요청 결과 안내</h2>
+      
+      <p style="margin-bottom: 15px; line-height: 1.6; font-size: 16px;">안녕하세요, 블로그 가입에 관심을 가져주셔서 감사합니다.</p>
+      
+      <p style="margin-bottom: 15px; line-height: 1.6; font-size: 16px;">회원님의 블로그 가입 요청을 신중하게 검토했습니다. 아쉽게도 현재 회원님의 가입 요청을 승인해 드리기 어려운 상황임을 알려드립니다.</p>
+      
+      <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 25px 0; border-radius: 4px;">
+        <p style="margin: 0; color: #1e40af; font-size: 15px;">
+          <strong>참고사항:</strong> 가입이 거절된 이유는 다음과 같은 경우일 수 있습니다. 아니라면 걍 꺼지쇼:
+        </p>
+        <ul style="margin: 10px 0 0; padding-left: 20px; color: #1e40af; font-size: 15px;">
+          <li>제공된 정보가 불충분하거나 정확하지 않은 경우</li>
+          <li>블로그의 주제 또는 목적과 맞지 않는 경우</li>
+          <li>기타 내부 정책에 따른 결정</li>
+        </ul>
+      </div>
+      
+      <p style="margin-bottom: 15px; line-height: 1.6; font-size: 16px;">추가 문의사항이 있으시면 언제든지 아래 버튼을 클릭하여 문의해 주시기 바랍니다.</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${process.env.CLIENT_URL}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; text-decoration: none; padding: 12px 25px; border-radius: 4px; font-weight: 600; font-size: 16px;">문의하기</a>
+      </div>
+      
+      <p style="margin-bottom: 15px; line-height: 1.6; font-size: 16px;">앞으로도 저희 블로그에 관심을 가져주시기 바랍니다. 감사합니다.</p>
+    </div>
+    
+    <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+      <p style="margin: 0 0 10px; color: #64748b; font-size: 14px;">
+        © 이현종 블로그. All rights reserved.
+      </p>
+      <p style="margin: 0; color: #64748b; font-size: 14px;">
+        이 이메일은 회원님의 가입 요청에 따라 발송되었습니다.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
           `,
       });
 
