@@ -12,6 +12,7 @@ import {
   RequestSignUpResponse,
   SignUpRequestListResponse,
   ProcessSignUpRequestResponse,
+  CheckSignUpRequestResponse,
 } from './dtos/users.response';
 @Resolver(() => User)
 export class UserResolver {
@@ -85,6 +86,27 @@ export class UserResolver {
         signUpRequests: result,
         success: true,
         message: '가입 요청 목록을 조회했습니다.',
+      };
+    } catch (error) {
+      console.log('error', error);
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+  @Query(() => CheckSignUpRequestResponse)
+  async checkSignUpRequest(
+    @Args('requestId') requestId: string,
+  ): Promise<CheckSignUpRequestResponse> {
+    try {
+      console.log('requestId', requestId);
+      const result = await this.userService.checkSignUpRequest(requestId);
+      return {
+        success: true,
+        message: '가입 요청 상태를 조회했습니다.',
+        signUpRequest: result,
       };
     } catch (error) {
       console.log('error', error);

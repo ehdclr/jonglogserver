@@ -39,3 +39,15 @@ export class ProcessSignUpRequestResponse {
   @Field(() => String)
   message: string;
 }
+
+@ObjectType()
+export class CheckSignUpRequestResponse {
+  @Field(() => Boolean)
+  success: boolean;
+
+  @Field(() => String)
+  message: string;
+
+  @Field(() => SignUpRequest, { nullable: true })
+  signUpRequest?: SignUpRequest;
+}

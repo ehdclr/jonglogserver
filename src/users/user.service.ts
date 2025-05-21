@@ -433,6 +433,17 @@ export class UserService {
     }));
   }
 
+  async checkSignUpRequest(requestId: string): Promise<SignUpRequest> {
+    const signUpRequest = await this.prisma.signUpRequest.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!signUpRequest) {
+      throw new NotFoundException('가입 요청이 존재하지 않습니다.');
+    }
+    return signUpRequest;
+  }
+
   async create(user: CreateUserInput, signupRequestId: string): Promise<void> {
     const signUpRequest = await this.prisma.signUpRequest.findUnique({
       where: { id: signupRequestId, status: 'accepted' },
