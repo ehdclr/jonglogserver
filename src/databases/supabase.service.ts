@@ -30,7 +30,10 @@ export class SupabaseService {
   }
 
   // Supabase Auth에 사용자 생성
-  async createUserInSupabaseAuth(email: string, password: string) {
+  async createUserInSupabaseAuth(
+    email: string,
+    password: string,
+  ): Promise<{ data: { user: any }; error: any }> {
     const { data, error } = await this.supabase.auth.admin.createUser({
       email,
       password,
@@ -43,7 +46,31 @@ export class SupabaseService {
       );
     }
 
-    return data.user;
+    return {
+      data,
+      error,
+    };
+  }
+
+  async updateUserInSupabaseAuth(
+    userId: string,
+    userData: { email?: string; password?: string },
+  ): Promise<{ data: { user: any }; error: any }> {
+    const { data, error } = await this.supabase.auth.admin.updateUserById(
+      userId,
+      userData,
+    );
+
+    if (error) {
+      throw new Error(
+        `Failed to update user in Supabase Auth: ${error.message}`,
+      );
+    }
+
+    return {
+      data,
+      error,
+    };
   }
 
   async validateRefreshToken(userId: string, token: string): Promise<boolean> {

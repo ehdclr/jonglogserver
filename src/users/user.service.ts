@@ -9,16 +9,39 @@ import { BadRequestException } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CreateUserInput } from './dtos/create-user.input';
+import { SupabaseService } from '../databases/supabase.service';
 @Injectable()
 export class UserService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
+    private supabase: SupabaseService,
   ) {}
 
-  async findAll(): Promise<User[]> {
+  async findAll(currentUser: User): Promise<User[]> {
     try {
-      const users = await this.prisma.user.findMany();
+      const admin = await this.prisma.user.findUnique({
+        where: { id: currentUser.id },
+      });
+
+      if (admin?.role !== 'owner') {
+        throw new BadRequestException(
+          '소유자만 사용자 목록을 조회할 수 있습니다.',
+        );
+      }
+
+      const users = await this.prisma.user.findMany({
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          avatarUrl: true,
+          bio: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
 
       return users.map((user) => ({
         id: user.id,
@@ -444,7 +467,10 @@ export class UserService {
     return signUpRequest;
   }
 
-  async create(user: CreateUserInput, signupRequestId: string): Promise<void> {
+  async createUser(
+    createUserInput: CreateUserInput,
+    signupRequestId: string,
+  ): Promise<void> {
     const signUpRequest = await this.prisma.signUpRequest.findUnique({
       where: { id: signupRequestId, status: 'accepted' },
     });
@@ -453,11 +479,26 @@ export class UserService {
       throw new NotFoundException('가입 요청이 존재하지 않습니다.');
     }
 
+    const { data: authUser, error: authError } =
+      await this.supabase.createUserInSupabaseAuth(
+        createUserInput.email,
+        createUserInput.password,
+      );
+
+    if (authError) {
+      throw new Error(`사용자 생성 실패: ${authError.message}`);
+    }
+
     await this.prisma.user.create({
-      data: { ...user, name: user.name ?? '' },
+      data: {
+        email: createUserInput.email,
+        name: createUserInput.name ?? '',
+        role: createUserInput.role ?? 'admin',
+        avatarUrl: createUserInput.avatarUrl ?? '',
+        bio: createUserInput.bio ?? '',
+      },
     });
   }
-
   async update(currentUser: User, updateUser: User): Promise<User> {
     if (currentUser.role == 'admin' && updateUser.id !== currentUser.id) {
       throw new BadRequestException(

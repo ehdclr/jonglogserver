@@ -20,11 +20,11 @@ export class User {
   @Field()
   role: string;
 
-  @Field()
-  createdAt: Date;
+  @Field({ nullable: true })
+  createdAt?: Date;
 
-  @Field()
-  updatedAt: Date;
+  @Field({ nullable: true })
+  updatedAt?: Date;
 }
 
 @ObjectType()

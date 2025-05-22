@@ -59,5 +59,16 @@ export class CreateUserResponse {
 
   @Field(() => String)
   message: string;
+}
 
+@ObjectType()
+export class getAllUsersResponse {
+  @Field(() => [User], { nullable: true })
+  users?: User[];
+
+  @Field(() => Boolean)
+  success: boolean;
+
+  @Field(() => String)
+  message: string;
 }

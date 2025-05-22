@@ -17,9 +17,9 @@ export class CreateUserInput {
   @Field({ defaultValue: 'admin' })
   role: string; //기본값 admin
 
-  @Field()
-  avatar_url?: string;
+  @Field({ nullable: true })
+  avatarUrl?: string;
 
-  @Field()
+  @Field({ nullable: true })
   bio?: string;
 }

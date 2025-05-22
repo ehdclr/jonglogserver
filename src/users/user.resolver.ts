@@ -14,6 +14,7 @@ import {
   ProcessSignUpRequestResponse,
   CheckSignUpRequestResponse,
   CreateUserResponse,
+  getAllUsersResponse,
 } from './dtos/users.response';
 @Resolver(() => User)
 export class UserResolver {
@@ -124,15 +125,13 @@ export class UserResolver {
     @Args('signupRequestId') signupRequestId: string,
   ): Promise<CreateUserResponse> {
     try {
-      console.log('user', createUserInput);
-      console.log('signupRequestId', signupRequestId);
-      await this.userService.create(createUserInput, signupRequestId);
+      await this.userService.createUser(createUserInput, signupRequestId);
       return {
         success: true,
         message: '사용자가 생성되었습니다.',
       };
     } catch (error) {
-      console.log('error', error);
+      console.error('error', error);
       return {
         success: false,
         message: error.message,
@@ -160,19 +159,22 @@ export class UserResolver {
   }
 
   //TODO 관리자가 사용자 목록 조회 가능해야함
-  @Query(() => [User])
+  @Query(() => getAllUsersResponse)
   @UseGuards(AuthGuard)
-  async users(@Context() context): Promise<User[]> {
+  async getAllUsers(@Context() context): Promise<getAllUsersResponse> {
     try {
-      if (context.user.role !== 'owner') {
-        throw new BadRequestException(
-          '소유자만 사용자 목록을 조회할 수 있습니다.',
-        );
-      }
-      return this.userService.findAll();
+      const result = await this.userService.findAll(context.req.user);
+      return {
+        users: result,
+        success: true,
+        message: '사용자 목록을 조회했습니다.',
+      };
     } catch (error) {
       console.log('error', error);
-      throw new InternalServerErrorException('Failed to fetch users');
+      return {
+        success: false,
+        message: error.message,
+      };
     }
   }
 }
