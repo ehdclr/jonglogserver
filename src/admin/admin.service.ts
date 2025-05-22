@@ -30,6 +30,10 @@ export class AdminService implements OnModuleInit {
           isGithubPublic: false,
           isEmailPublic: false,
           isSnsPublic: false,
+          logoUrl: '',
+          contactEmail: '',
+          githubUrl: '',
+          snsUrl: '',
         },
       });
       console.log('블로그 설정이 초기화되었습니다.');
