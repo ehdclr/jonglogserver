@@ -4,10 +4,7 @@ import { Args, Query, Resolver, Mutation, Context } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CreateUserInput } from './dtos/create-user.input';
-import {
-  BadRequestException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { InternalServerErrorException } from '@nestjs/common';
 import {
   RequestSignUpResponse,
   SignUpRequestListResponse,

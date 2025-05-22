@@ -1,16 +1,40 @@
 import { Injectable } from '@nestjs/common';
-import { UserService } from '../users/user.service';
 import { SupabaseService } from '../databases/supabase.service';
 import { User } from '../users/entities/user.entity';
 import { AdminCreateUserInput } from './dto/admin.input';
 import { PrismaService } from '../databases/prisma.service';
+import { BlogSettings } from './entity/blog.entity';
+import { OnModuleInit } from '@nestjs/common';
+
 @Injectable()
-export class AdminService {
+export class AdminService implements OnModuleInit {
   constructor(
-    private readonly userService: UserService,
     private readonly supabaseService: SupabaseService,
     private readonly prisma: PrismaService,
   ) {}
+
+  async onModuleInit() {
+    await this.initializeBlogSettings();
+  }
+
+  private async initializeBlogSettings() {
+    const settings = await this.prisma.blogSettings.findUnique({
+      where: { id: 'main_settings' },
+    });
+    if (!settings) {
+      await this.prisma.blogSettings.create({
+        data: {
+          id: 'main_settings',
+          blogName: 'JONG, DEV',
+          blogDescription: 'JONG, DEV 블로그',
+          isGithubPublic: false,
+          isEmailPublic: false,
+          isSnsPublic: false,
+        },
+      });
+      console.log('블로그 설정이 초기화되었습니다.');
+    }
+  }
 
   async adminCreateUser(
     adminCreateUserInput: AdminCreateUserInput,
@@ -46,5 +70,17 @@ export class AdminService {
         role: 'admin',
       },
     });
+  }
+
+  async getBlogSettings(): Promise<BlogSettings> {
+    const mainBlogSettings = await this.prisma.blogSettings.findUnique({
+      where: { id: 'main_settings' },
+    });
+
+    if (!mainBlogSettings) {
+      throw new Error('블로그 설정이 존재하지 않습니다.');
+    }
+
+    return mainBlogSettings;
   }
 }

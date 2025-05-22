@@ -9,6 +9,10 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+seed {
+  provider = "ts-node prisma/seed.ts"
+}
+
 enum UserRole {
   ADMIN
   OWNER
@@ -140,4 +144,25 @@ model SignUpRequest {
   updatedAt   DateTime @updatedAt
 
   @@map("signup_requests")
+}
+
+model BlogSettings {
+  id             String    @id @default("main_settings") 
+  blogName       String    @default("내 개인 블로그")     @map("blog_name")
+  blogDescription String?   @map("blog_description")   // 블로그 설명
+  logoUrl        String?   @map("logo_url")           // 로고 이미지 URL (선택 사항)
+
+  contactEmail   String?   @map("contact_email")       
+  isEmailPublic  Boolean   @default(false) @map("is_email_public")
+
+  githubUrl      String?   @map("github_url")
+  isGithubPublic Boolean   @default(false) @map("is_github_public")
+
+  snsUrl         String?   @map("sns_url")              
+  isSnsPublic    Boolean   @default(false) @map("is_sns_public")
+
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("blog_settings") // 데이터베이스 테이블 이름
 }

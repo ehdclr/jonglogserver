@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { SupabaseService } from './supabase.service';
 import { PrismaService } from './prisma.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-
+import { RedisService } from './redis.service';
 @Module({
-  imports: [ConfigModule.forRoot()], // ConfigModule을 forRoot()와 함께 import
+  imports: [ConfigModule], // ConfigModule을 forRoot()와 함께 import
   providers: [
     {
       provide: PrismaService,
@@ -20,7 +20,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       },
       inject: [ConfigService],
     },
+    {
+      provide: RedisService,
+      useFactory: (configService: ConfigService) => {
+        return new RedisService(configService);
+      },
+      inject: [ConfigService],
+    },
   ],
-  exports: [SupabaseService, PrismaService],
+  exports: [SupabaseService, PrismaService, RedisService],
 })
 export class DatabaseModule {}

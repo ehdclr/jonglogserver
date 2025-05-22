@@ -6,6 +6,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { UserModule } from './users/user.module';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
+import { AdminModule } from './admin/admin.module';
 @Module({
   imports: [
     ConfigModule,
@@ -21,6 +22,7 @@ import { MailModule } from './mail/mail.module';
     UserModule,
     AuthModule,
     MailModule,
+    AdminModule,
     // 다른 모듈들...
   ],
   providers: [],
