@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { json, urlencoded } from 'express';
 import { Logger } from '@nestjs/common';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,10 +13,10 @@ async function bootstrap() {
   // 요청 크기 제한 설정
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ limit: '50mb', extended: true }));
-
+  app.use(cookieParser());
   app.enableCors({
-    origin: 'http://localhost:3000', // 프론트엔드 주소로 명확히 지정
-    credentials: true, // 쿠키 등 인증정보 허용
+    origin: true, // 또는 '*' 대신 true 사용
+    credentials: true,
   });
 
   const port = configService.get<string>('PORT') ?? '8080';

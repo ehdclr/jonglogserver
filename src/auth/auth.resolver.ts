@@ -92,6 +92,7 @@ export class AuthResolver {
       };
     }
   }
+
   @Mutation(() => AuthPayload)
   async refreshToken(@Context() context) {
     try {
