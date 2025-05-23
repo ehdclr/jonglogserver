@@ -1,8 +1,10 @@
 import { Resolver, Query, Mutation, Args, Context } from '@nestjs/graphql';
 import { AdminService } from './admin.service';
-import { AdminCreateUserInput } from './dto/admin.input';
+import {
+  AdminCreateUserInput,
+  UpdateBlogSettingsInput,
+} from './dto/admin.input';
 import { AdminCreateUserResponse } from './dto/admin.response';
-import { BlogSettings } from './entity/blog.entity';
 import {
   blogSettingResponse,
   blogSettingUpdateResponse,
@@ -32,28 +34,29 @@ export class AdminResolver {
     }
   }
 
-  // @Mutation(() => blogSettingUpdateResponse)
-  // @UseGuards(AuthGuard)
-  // async updateBlogSettings(
-  //   @Args('blogSettings') blogSettings: BlogSettings,
-  //   @Context() context,
-  // ): Promise<blogSettingUpdateResponse> {
-  //   try {
-  //     await this.adminService.updateBlogSettings(
-  //       blogSettings,
-  //       context.req.user,
-  //     );
-  //     return {
-  //       success: true,
-  //       message: '블로그 설정 업데이트 성공',
-  //     };
-  //   } catch (error) {
-  //     return {
-  //       success: false,
-  //       message: error.message,
-  //     };
-  //   }
-  // }
+  @Mutation(() => blogSettingUpdateResponse)
+  @UseGuards(AuthGuard)
+  async updateBlogSettings(
+    @Args('updateBlogSettingsInput')
+    updateBlogSettingsInput: UpdateBlogSettingsInput,
+    @Context() context,
+  ): Promise<blogSettingUpdateResponse> {
+    try {
+      await this.adminService.updateBlogSettings(
+        updateBlogSettingsInput,
+        context.req.user,
+      );
+      return {
+        success: true,
+        message: '블로그 설정 업데이트 성공',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
 
   // //TODO owner 사용자 추가 --임의의 비밀번호 사용
   @Mutation(() => AdminCreateUserResponse)

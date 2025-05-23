@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../databases/supabase.service';
 import { User } from '../users/entities/user.entity';
-import { AdminCreateUserInput } from './dto/admin.input';
+import {
+  AdminCreateUserInput,
+  UpdateBlogSettingsInput,
+} from './dto/admin.input';
 import { PrismaService } from '../databases/prisma.service';
 import { BlogSettings } from './entity/blog.entity';
 import { OnModuleInit } from '@nestjs/common';
@@ -86,5 +89,27 @@ export class AdminService implements OnModuleInit {
     }
 
     return mainBlogSettings;
+  }
+
+  async updateBlogSettings(
+    updateBlogSettingsInput: UpdateBlogSettingsInput,
+    currentUser: User,
+  ): Promise<void> {
+    const admin = await this.prisma.user.findUnique({
+      where: { id: currentUser.id },
+    });
+
+    if (!admin) {
+      throw new Error('존재하지 않는 사용자입니다.(관리자 확인)');
+    }
+
+    if (admin.role !== 'owner') {
+      throw new Error('블로그 설정 수정은 블로그 주인만 가능합니다.');
+    }
+
+    await this.prisma.blogSettings.update({
+      where: { id: 'main_settings' },
+      data: updateBlogSettingsInput,
+    });
   }
 }
